@@ -1,0 +1,177 @@
+/* 第二版工作區：保留原本房間與設備圖形，將操作和交件資訊集中呈現。 */
+.shell { max-width: 1200px; padding-top: 20px; }
+header { padding-bottom: 13px; }
+.heading { padding: 14px 0; }
+h1 { font-size: clamp(29px, 3.5vw, 39px); }
+.heading .eyebrow { margin-bottom: 7px; }
+.subtitle { margin-top: 8px; }
+.stamp { width: 76px; height: 76px; }
+.dashboard { grid-template-columns: 1.2fr 1fr 1.2fr; padding: 15px 24px; }
+.scoreboard { display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+.scoreboard strong { font: bold 27px monospace; margin-left: 10px; }
+.scoreboard small { color: #74806e; font-size: 11px; }
+.metric strong { font-size: 25px; }
+.metric small { line-height: 1.5; }
+.room { padding-top: 0; }
+.devices { padding: 7px 0 9px; }
+.device { padding: 7px 10px 10px; }
+.art { transform: scale(.6); height: 145px; margin: -36px 0; }
+.device-title { font-size: 13px; margin-top: 3px; }
+.device-description { margin-top: 5px; }
+.outlet-row { padding-top: 10px; padding-bottom: 10px; }
+.outlet { width: 35px; height: 36px; }
+.outlet-row strong { font-weight: 700; font-size: 14px; }
+.operation-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px; padding: 12px 24px; background: #f4f6eb; border-bottom: 1px solid #dce2d1; }
+.operation-strip p { margin: 0; font-size: 11px; line-height: 1.6; }
+#heat-status { grid-column: 1 / -1; color: #7a826f; }
+.work-section { padding: 18px 24px 6px; }
+.section-title { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; }
+.section-title h2 { margin: 0; font-size: 16px; letter-spacing: 1px; white-space: nowrap; }
+#task-count { color: #859177; font: 12px monospace; margin-left: 10px; }
+#arrival-hint { font-size: 10px; color: #838977; text-align: right; }
+.tasks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.task-card { border: 1px solid #d2d8c7; background: #f9faf3; border-radius: 9px; padding: 11px; min-width: 0; cursor: pointer; }
+.task-card.chosen { border-color: #4f7456; box-shadow: inset 0 3px #4f7456; background: #f0f5e7; }
+.task-card.due-soon { border-color: #d68151; background: #fff1de; }
+.task-card.ready-to-send { border-color: #6399a0; background: #edf7f5; }
+.task-card.ready-to-send.due-soon { border-color: #d68151; background: #fff1de; }
+.task-card.critical { animation: deadline-pulse 1.4s ease-in-out infinite; }
+@keyframes deadline-pulse { 50% { box-shadow: inset 0 0 0 2px #d46b4780; background: #fbe0d1; } }
+.task-meta { display: flex; justify-content: space-between; gap: 8px; color: #697e5c; font-size: 10px; align-items: center; min-height: 23px; }
+.task-meta strong { white-space: nowrap; font: bold 18px monospace; }
+.task-label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.task-label kbd { margin: 0; color: #485d41; background: #ffffff80; }
+.task-card { grid-column: var(--task-column, auto); grid-row: 1; }
+.priority-guide { font-size: 10px; color: #6c7863; margin: -3px 0 10px; line-height: 1.7; }
+.priority-guide span { border-radius: 3px; padding: 2px 5px; }
+.tier-normal { background: #e6eddf; color: #46613d; }
+.tier-important { background: #dceef1; color: #246171; }
+.tier-critical { background: #ece1f3; color: #704489; }
+.reward-badge { display: inline-block; font-size: 16px; font-weight: 800; padding: 7px 9px; border-radius: 5px; margin: 6px 0 3px; font-variant-numeric: tabular-nums; }
+.delivery-summary { font-size: 12px; font-weight: 700; padding: 10px 12px; background: #e8f3ef; color: #386958; border-left: 3px solid #639e84; border-radius: 4px; line-height: 1.6; margin: 0 0 12px; }
+.task-slack { font-size: 11px; margin: 8px 0; color: #547149; line-height: 1.5; }
+.task-slack.tight { color: #ad512f; font-weight: bold; }
+.due-soon .task-meta strong { color: #b15331; }
+.task-card h3 { font-size: 16px; margin: 6px 0; }
+.task-status { font-size: 11px; font-weight: bold; margin: 0 0 11px; min-height: 18px; color: #486647; }
+.ready-to-send .task-status { color: #256e79; }
+.task-track, .upload-track { height: 6px; border-radius: 4px; background: #e1e5d7; overflow: hidden; }
+.task-track span, .upload-track span { display: block; height: 100%; width: 0; background: #6c885d; }
+.upload-track { height: 4px; }
+.upload-track span { background: #5d9ca0; }
+.task-detail { font-size: 10px; color: #6c7863; margin: 6px 0 9px; line-height: 1.5; }
+.task-actions { display: flex; gap: 6px; margin-top: 12px; }
+.task-actions button { border: 1px solid #557556; background: #4f7255; color: #fffef4; border-radius: 5px; padding: 9px 11px; font-size: 12px; width: 100%; min-height: 35px; }
+.task-actions button:hover:enabled { background: #37553b; }
+.task-actions button:disabled { background: #e3e7db; color: #77826c; border-color: #d3dac7; }
+[hidden] { display: none !important; }
+.action-reason { min-height: 25px; font-size: 10px; color: #7a806e; line-height: 1.5; margin: 6px 0; }
+.abandon { font-size: 10px; border: 0; border-bottom: 1px solid #ceb8a2; padding: 2px 0; color: #94745d; background: transparent; }
+.abandon:hover:enabled { color: #ab492f; }
+.offline { padding: 11px 14px; border: 1px solid #deaa83; background: #fff1df; color: #a35431; border-radius: 6px; font-size: 12px; line-height: 1.7; }
+.empty { padding: 35px 12px; margin: 0; text-align: center; color: #8a947e; border: 1px dashed #d3d9c7; border-radius: 9px; font-size: 12px; }
+.feedback { padding: 4px 24px; min-height: 55px; pointer-events: none; }
+.feedback p { margin: 5px 0; font-size: 11px; line-height: 1.6; color: #6d7e5f; }
+.feedback .success { color: #347660; }
+.feedback .warning { color: #b75836; }
+.history { padding: 10px 24px 14px; font-size: 11px; color: #79836e; border-top: 1px solid #e2e5d8; }
+.history summary { cursor: pointer; }
+.history ol { padding: 0; list-style: none; line-height: 2.1; max-height: 170px; overflow-y: auto; }
+.overlay { position: fixed; z-index: 10; background: #e9ecdfd9; overflow-y: auto; }
+.dialog { margin: auto; }
+.dialog ol { padding-left: 20px; }
+.dialog-foot { line-height: 1.6; }
+.results { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.results p { margin: 0; padding: 12px; background: #eef2e5; border-radius: 6px; }
+.results strong { display: block; font: bold 23px monospace; color: #416044; margin-top: 7px; }
+footer { padding-top: 13px; }
+@media (max-width: 700px) {
+  .game { overflow: clip; }
+  .room { position: sticky; top: 0; z-index: 3; }
+  .shell { padding: 12px 10px; }
+  .heading { padding: 18px 3px; }
+  .topbar { gap: 9px; padding: 10px 12px; }
+  .topbar > span:first-child { font-size: 10px; }
+  .timer { font-size: 21px; }
+  .quiet { padding: 6px; font-size: 10px; }
+  .dashboard { padding: 13px 12px; gap: 10px; grid-template-columns: 1fr 1fr 1.1fr; }
+  .metric { padding-left: 8px; border-left: 1px solid #d9dfcf; }
+  .metric:last-child { padding-left: 8px; }
+  .metric strong { font-size: 21px; }
+  .scoreboard strong { display: block; margin: 3px 0 0; }
+  .scoreboard small, .metric small { font-size: 9px; }
+  .devices { gap: 5px; }
+  .device { padding: 6px 3px; }
+  .device-tag { font-size: 7px; letter-spacing: 0; }
+  .device-title { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px; font-size: 11px; }
+  .power-tag { font-size: 8px; padding: 2px 4px; }
+  .art { transform: scale(.55); height: 110px; margin: -17px 0; }
+  .device-description { display: none; }
+  .outlet-row { padding: 9px 12px; }
+  .outlet-row strong { font-size: 13px; }
+  .operation-strip { padding: 10px 12px; grid-template-columns: 1fr; }
+  .operation-strip p { font-size: 10px; }
+  .work-section { padding: 14px 12px 5px; }
+  .tasks { grid-template-columns: 1fr; gap: 9px; }
+  .task-card { display: grid; grid-template-columns: minmax(0, 1fr) 115px; column-gap: 14px; padding: 12px; }
+  .task-card { grid-column: 1; grid-row: auto; }
+  .task-meta { grid-column: 1 / -1; }
+  .reward-badge, .task-card h3, .task-status, .task-track, .upload-track, .task-detail, .task-slack { grid-column: 1; }
+  .reward-badge { font-size: 13px; padding: 6px; justify-self: start; }
+  .task-card h3 { margin-top: 5px; }
+  .task-status { margin-bottom: 7px; }
+  .task-actions { grid-column: 2; grid-row: 3 / 5; margin: 0; align-items: center; }
+  .action-reason { grid-column: 2; grid-row: 5 / 9; margin: 0; align-self: center; }
+  .abandon { grid-column: 2; grid-row: 9 / 10; justify-self: start; align-self: end; }
+  .task-detail { margin: 4px 0; }
+  .feedback { padding: 5px 12px; }
+  .history { padding-left: 12px; padding-right: 12px; }
+  footer { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .task-card.critical { animation: none; border: 2px solid #c86740; } }
+
+/* 遊玩時把注意力留給任務；供電、時間和設備數值一起固定在上方。 */
+.game { overflow: clip; }
+.in-session > header { display: none; }
+.in-session .heading { padding: 8px 0 12px; }
+.in-session .heading h1 { font-size: 24px; }
+.in-session .heading .eyebrow, .in-session .heading .subtitle, .in-session .stamp { display: none; }
+.in-session .control-dock { position: sticky; top: 0; z-index: 4; background: #fffdf7; box-shadow: 0 3px 6px #33402f15; }
+.in-session .room { position: static; padding: 0 16px; }
+.in-session .art, .in-session .device-description, .in-session .device-tag { display: none; }
+.in-session .devices { padding: 6px 0; gap: 10px; }
+.in-session .device { min-height: 44px; padding: 8px; justify-content: center; }
+.in-session .device-title { margin: 0; }
+.in-session .desk-line, .in-session .outlet { display: none; }
+.in-session .outlet-row { margin: 0 -16px; padding: 6px 16px; }
+.in-session .outlet-row small { display: none; }
+.in-session .outlet-row strong { font-size: 12px; }
+.in-session .dashboard { padding: 9px 16px; gap: 12px; }
+.in-session .metric { padding-left: 14px; }
+.in-session .metric strong { font-size: 21px; }
+.in-session .scoreboard { gap: 3px; }
+.in-session .scoreboard strong { font-size: 22px; }
+.in-session .topbar { padding: 9px 16px; }
+.in-session .task-card { scroll-margin-top: 250px; }
+.result-review { padding: 9px 12px; border: 1px solid #d8dfcb; border-radius: 6px; }
+.result-review p { margin: 0; }
+.result-review summary { cursor: pointer; font-size: 12px; margin-top: 8px; color: #566c48; }
+.result-review ol { max-height: 145px; overflow-y: auto; padding-left: 17px; margin-bottom: 0; }
+.result-review li { font-size: 11px; line-height: 1.6; padding-bottom: 8px; }
+@media (max-width: 700px) {
+  .in-session .heading { padding: 4px 2px 10px; }
+  .in-session .heading h1 { font-size: 22px; }
+  .in-session .topbar { padding: 8px 10px; }
+  .in-session .dashboard { padding: 8px 10px; gap: 6px; }
+  .in-session .metric, .in-session .metric:last-child { padding-left: 8px; }
+  .in-session .scoreboard strong { display: inline; margin-left: 4px; font-size: 20px; }
+  .in-session .scoreboard > span { font-size: 10px; }
+  .in-session .metric strong { font-size: 19px; }
+  .in-session .device-title { font-size: 12px; }
+  .in-session .devices { gap: 5px; }
+  .in-session .room { padding: 0 10px; }
+  .in-session .outlet-row { margin: 0 -10px; padding: 5px 10px; }
+  .in-session .switch-tip { max-width: none; }
+  .in-session .priority-guide { margin-bottom: 8px; }
+  .in-session .operation-strip { gap: 3px; padding-top: 8px; padding-bottom: 8px; }
+}
