@@ -38,7 +38,7 @@ export function mount(): void {
         <div id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
         <details class="history"><summary id="history-title">本局紀錄 · 0 件</summary><ol id="history-list"></ol></details>
       </div>
-      <div id="overlay" class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><p class="eyebrow" id="dialog-kicker">接案 → 電腦處理 → 手機上傳</p><h2 id="dialog-title">下班前，能交幾件？</h2><div id="dialog-copy"><p>房間網路壞了，只能靠<b>手機熱點</b>交件。<br>你有 180 秒，但每份工作都有自己的期限。</p><ol><li>在工作通知按<b>「手機接收」</b>，取得任務。</li><li>點工作卡選取，再供電給<b>電腦</b>處理。</li><li>完成後按<b>「上傳交件」</b>，收到才算分！</li></ol><p>手機上傳不必插電，電腦可以同時做另一件。<br>記得補電、吹風；逾期或放棄每件扣 ${C.missedPenalty} 分。</p></div><button id="primary" class="primary">開始上工 →</button><p class="dialog-foot">切換分頁會暫停全部倒數，回來後按繼續。</p></section></div>
+      <div id="overlay" class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><p class="eyebrow" id="dialog-kicker">接案 → 電腦處理 → 手機上傳</p><h2 id="dialog-title">下班前，能交幾件？</h2><div id="dialog-copy"><p>房間網路壞了，只能靠<b>手機熱點</b>交件。<br>你有 180 秒，但每份工作都有自己的期限。</p><ol><li>在工作通知按<b>「手機接收」</b>，取得任務。</li><li>點工作卡選取，再供電給<b>電腦</b>處理。</li><li>完成後按<b>「上傳交件」</b>，收到才算分！</li></ol><p>手機上傳不必插電，電腦可以同時做另一件。<br>記得補電、吹風；逾期或放棄每件扣 ${C.missedPenalty} 分。</p></div><button id="primary" class="primary">開始上工 →</button><button id="retry-same" class="secondary" hidden>重試同一局</button><p class="dialog-foot">切換分頁會暫停全部倒數，回來後按繼續。</p></section></div>
     </section>
     <footer><span>生活很難，插座還只有一個。</span><span>1 / 2 / 3 供電 · Q / W / E 選取已接收工作 · 空白鍵暫停 · <span id="seed-label"></span></span></footer>
   </main>`;
@@ -63,10 +63,11 @@ function makeCard(t: Task): HTMLElement {
     <p class="task-detail" data-field="upload"></p>
     <p class="task-slack" data-field="slack" title="假設立即優先處理、維持目前效率且手機有電；包含現有上傳排隊，不含接案操作、補電、降溫與其他電腦工作。"></p>
     <div class="task-actions"><button data-action="receive">手機接收</button><button data-action="select">選取處理</button><button data-action="upload">上傳交件</button></div>
-    <p class="action-reason" data-field="reason"></p><button class="abandon" data-action="abandon">放棄此件（-${C.missedPenalty} 分）</button>`;
+    <p class="action-reason" data-field="reason"></p><button class="abandon" data-action="abandon">放棄此件（-${C.missedPenalty} 分）</button>
+    <div class="abandon-confirm" data-field="abandon-confirm" hidden><p>確認放棄？扣 ${C.missedPenalty} 分並釋放位置。期限仍在倒數。</p><div><button data-action="cancel-abandon">保留工作</button><button data-action="confirm-abandon">確認放棄</button></div></div>`;
   return card;
 }
-function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: number): void {
+function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: number, pendingAbandonId?: number | null): void {
   const field = (name: string) => card.querySelector<HTMLElement>(`[data-field="${name}"]`)!;
   const button = (name: string) => card.querySelector<HTMLButtonElement>(`[data-action="${name}"]`)!;
   const left = Math.max(0, t.dueAt - s.elapsed);
@@ -111,7 +112,11 @@ function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: numbe
   button('upload').hidden = !['ready', 'uploading'].includes(t.status);
   button('upload').disabled = !isActive(s) || s.battery <= 0 || s.uploadingId !== null;
   text(button('upload'), t.status === 'uploading' ? '上傳已開始' : `上傳交件 +${t.reward}`);
-  button('abandon').disabled = !isActive(s);
+  const confirming = pendingAbandonId === t.id;
+  field('abandon-confirm').hidden = !confirming;
+  button('abandon').disabled = !isActive(s) || confirming;
+  button('confirm-abandon').disabled = !isActive(s);
+  button('cancel-abandon').disabled = !isActive(s);
   let reason = '';
   if (s.paused) reason = '繼續遊戲後才能操作。';
   else if (s.battery <= 0 && ['pending', 'ready', 'uploading'].includes(t.status)) reason = '手機已關機，無法接案或交件；請充電。';
@@ -135,9 +140,10 @@ export function resetView(): void {
 export function showDialog(kicker: string, title: string, copy: string, label: string): void {
   text(el('dialog-kicker'), kicker); text(el('dialog-title'), title);
   el('dialog-copy').innerHTML = copy; text(el('primary'), label);
+  el('retry-same').hidden = true;
   el('overlay').hidden = false; el('play-area').inert = true; el('primary').focus();
 }
-export function hideDialog(): void { el('overlay').hidden = true; el('play-area').inert = false; }
+export function hideDialog(): void { el('overlay').hidden = true; el('retry-same').hidden = true; el('play-area').inert = false; }
 const outcomes = { delivered: '已交件', expired: '逾期', abandoned: '主動放棄', unfinished: '下班未完成' };
 function historyLine(record: TaskRecord): string {
   return `${clockText(record.at)} · ${record.name} · ${outcomes[record.outcome]} · ${record.score > 0 ? '+' : ''}${record.score} 分 · ${recordDetail(record)}`;
@@ -158,7 +164,7 @@ export function resultReview(history: TaskRecord[]): string {
   }
   return container.outerHTML;
 }
-export function render(s: GameState, best: number, muted: boolean): void {
+export function render(s: GameState, best: number, muted: boolean, pendingAbandonId: number | null = null): void {
   document.querySelector('.shell')!.classList.toggle('in-session', s.phase !== 'ready');
   text(el('session-label'), s.paused ? '已暫停' : s.phase === 'playing' ? '下班倒數' : s.phase === 'ended' ? '下班了' : '準備上工');
   text(el('timer'), clockText(remaining(s)));
@@ -208,7 +214,18 @@ export function render(s: GameState, best: number, muted: boolean): void {
       const next = [...el('tasks').children].find(node => Number((node as HTMLElement).dataset.slot) > slot);
       el('tasks').insertBefore(card, next ?? null);
     }
-    renderCard(card, task, s, earliest?.id);
+    renderCard(card, task, s, earliest?.id, pendingAbandonId);
+  }
+  for (let slot = 0; slot < C.maxTasks; slot++) {
+    let placeholder = el('tasks').querySelector<HTMLElement>(`[data-empty-slot="${slot}"]`);
+    if (!placeholder) {
+      placeholder = document.createElement('div'); placeholder.className = 'empty-slot';
+      placeholder.dataset.emptySlot = String(slot);
+      placeholder.style.setProperty('--task-column', String(slot + 1));
+      placeholder.textContent = `${taskKeys[slot]} 空位 · 等待下一則通知`;
+      el('tasks').append(placeholder);
+    }
+    placeholder.hidden = s.tasks.length === 0 || [...cardSlots.values()].includes(slot);
   }
   if (historySize !== s.history.length) {
     historySize = s.history.length;

@@ -132,7 +132,19 @@ try {
   assert.equal(await page.locator('.task-card.chosen').getAttribute('data-id'), secondId);
   await page.keyboard.press('q');
   assert.equal(await page.locator('.task-card.chosen').getAttribute('data-slot'), '0');
+  const beforeAbandonScore = await page.locator('#score').innerText();
   await page.locator('.task-card[data-slot="0"] [data-action="abandon"]').click();
+  assert.equal(await page.locator('#score').innerText(), beforeAbandonScore);
+  assert.equal(await page.locator('.task-card[data-slot="0"] [data-action="abandon"]').isDisabled(), true);
+  const beforeConfirmTime = await page.locator('#timer').innerText();
+  await page.clock.fastForward(1000);
+  assert.notEqual(await page.locator('#timer').innerText(), beforeConfirmTime);
+  await page.locator('.task-card[data-slot="0"] [data-action="cancel-abandon"]').click();
+  assert.equal(await page.locator('#score').innerText(), beforeAbandonScore);
+  await page.locator('.task-card[data-slot="0"] [data-action="abandon"]').click();
+  await page.locator('.task-card[data-slot="0"] [data-action="confirm-abandon"]').click();
+  assert.equal(Number(await page.locator('#score').innerText()), Number(beforeAbandonScore) - 40);
+  assert.equal(await page.locator('[data-empty-slot="0"]').isVisible(), true);
   assert.equal(await page.locator(`.task-card[data-id="${secondId}"] [data-field="shortcut"]`).innerText(), 'W');
   await page.clock.fastForward(15600);
   assert.equal(await page.locator('.task-card[data-slot="0"] [data-field="shortcut"]').innerText(), 'Q');
@@ -161,6 +173,38 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.keyboard.press('Space');
   assert.match(await page.locator('#dialog-title').innerText(), /暫停/);
+  // 一般隨機局也能使用結算按鈕重試原種子，不需要手動編輯網址。
+  await page.goto('http://127.0.0.1:5183/');
+  await page.locator('#primary').click();
+  const originalSeed = await page.locator('#seed-label').innerText();
+  await page.clock.runFor(1100);
+  const originalFirstTask = await page.locator('.task-card').first().innerText();
+  await page.clock.fastForward(180000);
+  assert.equal(await page.locator('#retry-same').isVisible(), true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'test-results/retry-result.png', fullPage: true });
+  await page.locator('#retry-same').click();
+  assert.equal(await page.locator('#seed-label').innerText(), originalSeed);
+  assert.equal(await page.locator('#score').innerText(), '0');
+  assert.equal(await page.locator('#timer').innerText(), '03:00');
+  assert.equal(await page.locator('#history-list li').count(), 0);
+  assert.equal(await page.locator('#retry-same').isVisible(), false);
+  await page.clock.runFor(1100);
+  assert.equal(await page.locator('.task-card').first().innerText(), originalFirstTask);
+  // 確認面板跨暫停或任務到期時關閉，不留下可誤扣分的按鈕。
+  await page.locator('.task-card [data-action="abandon"]').click();
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.abandon-confirm:visible').count(), 0);
+  assert.equal(await page.locator('#overlay').isVisible(), false);
+  await page.locator('.task-card [data-action="abandon"]').click();
+  await page.locator('#pause').click();
+  await page.locator('#primary').click();
+  assert.equal(await page.locator('.abandon-confirm:visible').count(), 0);
+  await page.locator('.task-card [data-action="abandon"]').click();
+  await page.clock.fastForward(30000);
+  assert.equal(await page.locator('.abandon-confirm:visible').count(), 0);
+  assert.equal(await page.locator('#score').innerText(), '-40');
+  console.log('PASS browser: 放棄確認與取消、期限持續倒數、空位提示、同種子重試、暫停及逾期清除確認');
   assert.deepEqual(errors, []);
   console.log('PASS browser: 重新開始、最高分與靜音保存、關機通知與充電恢復、空白鍵暫停、320/390px 無水平溢出、無執行錯誤');
 } finally {

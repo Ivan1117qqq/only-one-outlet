@@ -68,6 +68,15 @@ h1 { font-size: clamp(29px, 3.5vw, 39px); }
 .action-reason { min-height: 25px; font-size: 10px; color: #7a806e; line-height: 1.5; margin: 6px 0; }
 .abandon { font-size: 10px; border: 0; border-bottom: 1px solid #ceb8a2; padding: 2px 0; color: #94745d; background: transparent; }
 .abandon:hover:enabled { color: #ab492f; }
+.abandon:disabled { opacity: .55; }
+.abandon-confirm { grid-column: 1 / -1; margin-top: 9px; padding: 10px; border: 1px solid #d1a486; border-radius: 5px; background: #fff1e1; cursor: default; }
+.abandon-confirm p { margin: 0 0 9px; font-size: 11px; line-height: 1.6; color: #855a40; }
+.abandon-confirm > div { display: flex; gap: 8px; }
+.abandon-confirm button { flex: 1; border: 1px solid #c2b69f; border-radius: 4px; background: #fffdf5; padding: 9px 5px; min-height: 38px; font-size: 11px; }
+.abandon-confirm [data-action="confirm-abandon"] { color: #924c2d; }
+.empty-slot { grid-column: var(--task-column); grid-row: 1; border: 1px dashed #cfd7c3; border-radius: 8px; display: grid; place-items: center; padding: 15px; min-height: 110px; color: #87937a; font-size: 12px; background: #f8f9f1; }
+.secondary { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #8fa386; border-radius: 6px; background: #f4f7ed; color: #496343; font-size: 13px; }
+.secondary:hover { background: #e8efdd; }
 .offline { padding: 11px 14px; border: 1px solid #deaa83; background: #fff1df; color: #a35431; border-radius: 6px; font-size: 12px; line-height: 1.7; }
 .empty { padding: 35px 12px; margin: 0; text-align: center; color: #8a947e; border: 1px dashed #d3d9c7; border-radius: 9px; font-size: 12px; }
 .feedback { padding: 4px 24px; min-height: 55px; pointer-events: none; }
@@ -86,6 +95,7 @@ h1 { font-size: clamp(29px, 3.5vw, 39px); }
 .results strong { display: block; font: bold 23px monospace; color: #416044; margin-top: 7px; }
 footer { padding-top: 13px; }
 @media (max-width: 700px) {
+  .empty-slot { display: none; }
   .game { overflow: clip; }
   .room { position: sticky; top: 0; z-index: 3; }
   .shell { padding: 12px 10px; }

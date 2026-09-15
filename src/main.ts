@@ -14,10 +14,14 @@ let muted = loadMuted();
 let lastTime = performance.now();
 let lastEvent = 0;
 let resultShown = false;
+let pendingAbandonId: number | null = null;
 const clock = new GameClock();
 const sounds = new Sounds();
 mount();
-const paint = () => render(state, best, muted);
+const paint = () => {
+  if (!isActive(state) || !state.tasks.some(t => t.id === pendingAbandonId)) pendingAbandonId = null;
+  render(state, best, muted, pendingAbandonId);
+};
 
 function update(now: number): void {
   const delta = Math.max(0, (now - lastTime) / 1000);
@@ -32,7 +36,8 @@ function update(now: number): void {
     resultShown = true;
     best = Math.max(best, state.score); saveBest(best);
     showDialog('下班了・本日工作結算', '今天，也努力交件了。',
-      `<div class="results"><p>成功交件<strong>${state.delivered} 件</strong></p><p>漏件<strong>${state.missed} 件</strong></p><p>本局總分<strong>${state.score} 分</strong></p><p>歷史最高<strong>${best} 分</strong></p></div>${resultReview(state.history)}<p>漏件包含逾期、主動放棄與下班未完成的工作，每件只扣一次分。</p>`, '再挑戰一次 →');
+      `<div class="results"><p>成功交件<strong>${state.delivered} 件</strong></p><p>漏件<strong>${state.missed} 件</strong></p><p>本局總分<strong>${state.score} 分</strong></p><p>歷史最高<strong>${best} 分</strong></p></div>${resultReview(state.history)}<p>漏件包含逾期、主動放棄與下班未完成的工作，每件只扣一次分。</p><p>重試同一局可比較策略；工作區滿時，到達時機仍會隨操作改變。</p>`, fixedSeed === undefined ? '挑戰新一局 →' : '再次挑戰固定種子 →');
+    el('retry-same').hidden = fixedSeed !== undefined;
   }
 }
 function pause(): void {
@@ -42,16 +47,25 @@ function pause(): void {
   showDialog('休息一下，沒關係', '工作暫停中。', '<p>交件期限、工作通知、處理、上傳、溫度與電量全部暫停。<br>準備好後按繼續。</p>', '繼續上工 →');
   paint();
 }
+function begin(seed: number): void {
+  state = createGame(seed); state.phase = 'playing';
+  clock.reset(); resetView(); lastEvent = 0; resultShown = false; pendingAbandonId = null;
+}
+function resumeDisplay(): void {
+  lastTime = performance.now(); hideDialog(); paint();
+  document.querySelector<HTMLButtonElement>(`[data-device="${state.powered}"]`)!.focus();
+}
 el('primary').addEventListener('click', () => {
   if (document.hidden) return;
   if (!muted) sounds.enable();
   if (state.paused) setPaused(state, false);
-  else {
-    state = createGame(newSeed()); state.phase = 'playing';
-    clock.reset(); resetView(); lastEvent = 0; resultShown = false;
-  }
-  lastTime = performance.now(); hideDialog(); paint();
-  document.querySelector<HTMLButtonElement>(`[data-device="${state.powered}"]`)!.focus();
+  else begin(newSeed());
+  resumeDisplay();
+});
+el('retry-same').addEventListener('click', () => {
+  if (document.hidden || state.phase !== 'ended') return;
+  if (!muted) sounds.enable();
+  begin(state.generator.seed); resumeDisplay();
 });
 function act(action: () => void): void {
   if (document.hidden || !isActive(state)) return;
@@ -71,11 +85,19 @@ el('tasks').addEventListener('click', event => {
   if (button?.disabled) return;
   const action = button?.dataset.action ?? 'select';
   act(() => {
-    if (action === 'receive') receiveTask(state, id);
-    else if (action === 'select') selectTask(state, id);
-    else if (action === 'upload') startUpload(state, id);
-    else if (action === 'abandon') abandonTask(state, id);
+    if (action === 'abandon') pendingAbandonId = id;
+    else if (action === 'confirm-abandon') {
+      if (pendingAbandonId === id) abandonTask(state, id);
+      pendingAbandonId = null;
+    } else {
+      pendingAbandonId = null;
+      if (action === 'receive') receiveTask(state, id);
+      else if (action === 'select') selectTask(state, id);
+      else if (action === 'upload') startUpload(state, id);
+    }
   });
+  if (action === 'abandon' && pendingAbandonId === id) card.querySelector<HTMLButtonElement>('[data-action="cancel-abandon"]')!.focus();
+  if (action === 'cancel-abandon') card.querySelector<HTMLButtonElement>('[data-action="abandon"]')!.focus();
 });
 el('pause').addEventListener('click', pause);
 el('mute').addEventListener('click', () => {
@@ -87,6 +109,9 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('keydown', event => {
   if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.key === 'Escape' && pendingAbandonId !== null) {
+    event.preventDefault(); pendingAbandonId = null; paint(); return;
+  }
   const device = ({ '1': 'computer', '2': 'fan', '3': 'phone' } as Record<string, Device>)[event.key];
   if (device) act(() => setPower(state, device));
   const slot = ['KeyQ', 'KeyW', 'KeyE'].indexOf(event.code);
