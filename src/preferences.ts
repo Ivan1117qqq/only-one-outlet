@@ -1,4 +1,4 @@
-const BEST_KEY = 'only-one-outlet:v2:best';
+const BEST_KEY = 'only-one-outlet:encore-v1:best';
 const MUTE_KEY = 'only-one-outlet:muted';
 function read(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
 function write(key: string, value: string): void { try { localStorage.setItem(key, value); } catch { /* 私密模式或 iframe 限制時仍可遊玩。 */ } }

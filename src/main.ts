@@ -1,14 +1,16 @@
 import './style.css';
 import './work.css';
-import { abandonTask, createGame, GameClock, isActive, receiveTask, selectTask, setPaused, setPower, startUpload } from './game.ts';
-import type { Device } from './game.ts';
+import { abandonTask, cancelCall, changeTerms, createGame, GameClock, isActive, receiveTask, selectTask, setPaused, setPower, startUpload } from './game.ts';
+import type { Device, GameState } from './game.ts';
+import { ENCORE, insightText } from './encore.ts';
 import { el, hideDialog, mount, render, resetView, resultReview, shortcutTaskId, showDialog } from './view.ts';
 import { loadBest, loadMuted, saveBest, saveMuted, Sounds } from './preferences.ts';
 
 const seedParam = new URLSearchParams(location.search).get('seed');
 const fixedSeed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) >>> 0 : undefined;
 const newSeed = () => fixedSeed ?? crypto.getRandomValues(new Uint32Array(1))[0];
-let state = createGame(newSeed());
+let state = createGame(newSeed(), 1);
+let firstRound: GameState | null = null;
 let best = loadBest();
 let muted = loadMuted();
 let lastTime = performance.now();
@@ -34,10 +36,20 @@ function update(now: number): void {
   }
   if (state.phase === 'ended' && !resultShown) {
     resultShown = true;
+    if (state.round === 1) {
+      firstRound = state;
+      const notes = state.schedule.map((a, index) => {
+        const record = state.history.find(r => r.id === index + 1);
+        return `<li><b>${a.at} 秒 · ${a.template.name}</b>（${record?.outcome === 'delivered' ? '已交件' : '漏件'}）<br>${insightText[a.insight]}</li>`;
+      }).join('');
+      showDialog('第一輪結束 · 客戶的事後回覆', '如果再來一次，不必照單全收。',
+        `<p>第一輪：交件 ${state.delivered} 件／漏件 ${state.missed} 件／${state.score} 分。</p><p>同一天即將重來，通知與初始設備狀態完全相同。這次能依客戶回覆<b>改交重點版</b>或<b>打電話延期</b>。</p><ul class="memory-list">${notes}</ul><p>重點版：處理量降至 ${ENCORE.briefWorkRatio * 100}%，報酬剩 ${ENCORE.briefRewardRatio * 100}%。<br>延期：通話 ${ENCORE.callSeconds} 秒換 ${ENCORE.extension} 秒期限，耗電且占用手機，不能同時上傳。電腦可繼續工作。</p>`, '帶著經驗，再來一次 →');
+      return;
+    }
     best = Math.max(best, state.score); saveBest(best);
-    showDialog('下班了・本日工作結算', '今天，也努力交件了。',
-      `<div class="results"><p>成功交件<strong>${state.delivered} 件</strong></p><p>漏件<strong>${state.missed} 件</strong></p><p>本局總分<strong>${state.score} 分</strong></p><p>歷史最高<strong>${best} 分</strong></p></div>${resultReview(state.history)}<p>漏件包含逾期、主動放棄與下班未完成的工作，每件只扣一次分。</p><p>重試同一局可比較策略；工作區滿時，到達時機仍會隨操作改變。</p>`, fixedSeed === undefined ? '挑戰新一局 →' : '再次挑戰固定種子 →');
-    el('retry-same').hidden = fixedSeed !== undefined;
+    const saved = state.history.filter(r => r.outcome === 'delivered' && firstRound?.history.find(old => old.id === r.id)?.outcome !== 'delivered');
+    showDialog('兩輪完成 · 再一次的選擇', '這次，你改變了什麼？',
+      `<div class="results"><p>第一輪<strong>${firstRound?.score ?? 0} 分</strong></p><p>第二輪<strong>${state.score} 分</strong></p><p>成功／漏件<strong>${state.delivered}／${state.missed} 件</strong></p><p>第二輪最高<strong>${best} 分</strong></p></div><p>救回第一輪漏掉的 ${saved.length} 件：${saved.map(r => r.name).join('、') || '這次沒有新增救回的工作'}。</p><p>分數變化：${state.score - (firstRound?.score ?? 0)} 分。重點版報酬較低，多交件不一定更高分。</p>${resultReview(state.history)}<p>漏件每件扣 40 分；下班仍未交件也算漏件。</p>`, '重新體驗兩輪 →');
   }
 }
 function pause(): void {
@@ -47,8 +59,9 @@ function pause(): void {
   showDialog('休息一下，沒關係', '工作暫停中。', '<p>交件期限、工作通知、處理、上傳、溫度與電量全部暫停。<br>準備好後按繼續。</p>', '繼續上工 →');
   paint();
 }
-function begin(seed: number): void {
-  state = createGame(seed); state.phase = 'playing';
+function begin(seed: number, round: 1 | 2 = 1): void {
+  if (round === 1) firstRound = null;
+  state = createGame(seed, round, firstRound?.known); state.phase = 'playing';
   clock.reset(); resetView(); lastEvent = 0; resultShown = false; pendingAbandonId = null;
 }
 function resumeDisplay(): void {
@@ -59,6 +72,7 @@ el('primary').addEventListener('click', () => {
   if (document.hidden) return;
   if (!muted) sounds.enable();
   if (state.paused) setPaused(state, false);
+  else if (state.phase === 'ended' && state.round === 1) begin(state.generator.seed, 2);
   else begin(newSeed());
   resumeDisplay();
 });
@@ -94,6 +108,8 @@ el('tasks').addEventListener('click', event => {
       if (action === 'receive') receiveTask(state, id);
       else if (action === 'select') selectTask(state, id);
       else if (action === 'upload') startUpload(state, id);
+      else if (action === 'brief' || action === 'extend') changeTerms(state, id, action);
+      else if (action === 'cancel-call') cancelCall(state);
     }
   });
   if (action === 'abandon' && pendingAbandonId === id) card.querySelector<HTMLButtonElement>('[data-action="cancel-abandon"]')!.focus();

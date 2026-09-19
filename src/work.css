@@ -185,3 +185,13 @@ footer { padding-top: 13px; }
   .in-session .priority-guide { margin-bottom: 8px; }
   .in-session .operation-strip { gap: 3px; padding-top: 8px; padding-bottom: 8px; }
 }
+
+/* 第二輪的記憶與協商直接放在對應卡片，避免另開阻塞視窗。 */
+.terms { margin: 12px 0; padding: 12px; background: #edf2ff; border: 1px solid #95a6d6; border-radius: 10px; color: #283652; }
+.terms p { margin: 0 0 8px; line-height: 1.5; }
+.terms small { display: block; margin-top: 8px; line-height: 1.5; }
+.terms .task-actions { flex-direction: column; }
+.terms button { white-space: normal; }
+.memory-list { padding-left: 22px; text-align: left; font-size: .88rem; }
+.memory-list li { margin: 8px 0; line-height: 1.5; }
+.dialog { max-height: calc(100dvh - 40px); overflow-y: auto; }

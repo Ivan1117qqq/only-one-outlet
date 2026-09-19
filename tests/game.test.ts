@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import './encore.test.ts';
 import assert from 'node:assert/strict';
 import { abandonTask, createGame, efficiency, GameClock, receiveTask, selectTask, setPaused, setPower, startUpload } from '../src/game.ts';
 import type { GameState, Task } from '../src/game.ts';

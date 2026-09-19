@@ -4,6 +4,7 @@ import type { Device, GameState, Task, TaskRecord } from './game.ts';
 import { devicesMarkup } from './devices.ts';
 import { importance, taskAdvice } from './task-advice.ts';
 import { recordDetail, reviewSummary } from './review.ts';
+import { ENCORE, insightText } from './encore.ts';
 
 export const names: Record<Device, string> = { computer: '電腦', fan: '電風扇', phone: '手機' };
 export const el = (id: string): HTMLElement => document.getElementById(id)!;
@@ -13,8 +14,8 @@ const clockText = (seconds: number) => `${Math.floor(Math.ceil(seconds) / 60).to
 export function mount(): void {
   el('app').innerHTML = `
   <main class="shell">
-    <header><span class="brand"><span class="brand-icon">↯</span> 小房間工作室</span><span class="edition">下班前的最後三分鐘 / 002</span></header>
-    <section class="heading"><div><p class="eyebrow">ONE OUTLET. TOO MANY DEADLINES.</p><h1>只有一個插座<span>。</span></h1><p class="subtitle">網路壞了，工作還在進來。接案 → 電腦處理 → 手機上傳。</p></div><span class="stamp">距離下班<br><strong>3 分鐘</strong></span></section>
+    <header><span class="brand"><span class="brand-icon">↯</span> 小房間工作室</span><span class="edition">再一次，不再照單全收 / 003</span></header>
+    <section class="heading"><div><p class="eyebrow">ONE OUTLET. TOO MANY DEADLINES.</p><h1>只有一個插座<span>。</span></h1><p class="subtitle">網路壞了，工作還在進來。接案 → 電腦處理 → 手機上傳。</p></div><span class="stamp">距離下班<br><strong>再一次</strong></span></section>
     <section class="game" aria-label="遊戲區域">
       <div id="play-area">
         <div class="control-dock" aria-label="供電與即時狀態">
@@ -38,7 +39,7 @@ export function mount(): void {
         <div id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
         <details class="history"><summary id="history-title">本局紀錄 · 0 件</summary><ol id="history-list"></ol></details>
       </div>
-      <div id="overlay" class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><p class="eyebrow" id="dialog-kicker">接案 → 電腦處理 → 手機上傳</p><h2 id="dialog-title">下班前，能交幾件？</h2><div id="dialog-copy"><p>房間網路壞了，只能靠<b>手機熱點</b>交件。<br>你有 180 秒，但每份工作都有自己的期限。</p><ol><li>在工作通知按<b>「手機接收」</b>，取得任務。</li><li>點工作卡選取，再供電給<b>電腦</b>處理。</li><li>完成後按<b>「上傳交件」</b>，收到才算分！</li></ol><p>手機上傳不必插電，電腦可以同時做另一件。<br>記得補電、吹風；逾期或放棄每件扣 ${C.missedPenalty} 分。</p></div><button id="primary" class="primary">開始上工 →</button><button id="retry-same" class="secondary" hidden>重試同一局</button><p class="dialog-foot">切換分頁會暫停全部倒數，回來後按繼續。</p></section></div>
+      <div id="overlay" class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><p class="eyebrow" id="dialog-kicker">接案 → 電腦處理 → 手機上傳</p><h2 id="dialog-title">再來一次，不再照單全收。</h2><div id="dialog-copy"><p><b>第一輪照單全收，第二輪學會談條件。</b><br>同一天重來兩次，每輪 100 秒，約 4 分鐘完成（不含暫停）。</p><ol><li>手機<b>接收</b>通知，電腦通電<b>處理</b>。</li><li>完成後按<b>上傳交件</b>，才會得分。</li><li>第一輪後收到客戶回覆；第二輪可<b>交重點版</b>或<b>打電話延期</b>，改變要求。</li></ol><p>唯一插座：1 電腦／2 風扇／3 手機。<br>熱會拖慢工作；沒電不能交件。上傳時電腦可做另一件。<br>先放心試第一輪，漏件不會提早結束；第二輪還有機會。</p></div><button id="primary" class="primary">開始上工 →</button><button id="retry-same" class="secondary" hidden>重試同一局</button><p class="dialog-foot">切換分頁會暫停全部倒數，回來後按繼續。</p></section></div>
     </section>
     <footer><span>生活很難，插座還只有一個。</span><span>1 / 2 / 3 供電 · Q / W / E 選取已接收工作 · 空白鍵暫停 · <span id="seed-label"></span></span></footer>
   </main>`;
@@ -63,7 +64,9 @@ function makeCard(t: Task): HTMLElement {
     <p class="task-detail" data-field="upload"></p>
     <p class="task-slack" data-field="slack" title="假設立即優先處理、維持目前效率且手機有電；包含現有上傳排隊，不含接案操作、補電、降溫與其他電腦工作。"></p>
     <div class="task-actions"><button data-action="receive">手機接收</button><button data-action="select">選取處理</button><button data-action="upload">上傳交件</button></div>
-    <p class="action-reason" data-field="reason"></p><button class="abandon" data-action="abandon">放棄此件（-${C.missedPenalty} 分）</button>
+    <p class="action-reason" data-field="reason"></p>
+    <section class="terms" data-field="terms" hidden><p data-field="insight"></p><p data-field="terms-status"></p><div class="task-actions"><button data-action="brief"></button><button data-action="extend"></button><button data-action="cancel-call">掛斷，先去交件</button></div><small data-field="terms-reason"></small></section>
+    <button class="abandon" data-action="abandon">放棄此件（-${C.missedPenalty} 分）</button>
     <div class="abandon-confirm" data-field="abandon-confirm" hidden><p>確認放棄？扣 ${C.missedPenalty} 分並釋放位置。期限仍在倒數。</p><div><button data-action="cancel-abandon">保留工作</button><button data-action="confirm-abandon">確認放棄</button></div></div>`;
   return card;
 }
@@ -110,7 +113,7 @@ function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: numbe
   button('select').setAttribute('aria-pressed', String(selected));
   text(button('select'), selected ? '已選取' : `選取處理 ${taskKeys[slot]}`);
   button('upload').hidden = !['ready', 'uploading'].includes(t.status);
-  button('upload').disabled = !isActive(s) || s.battery <= 0 || s.uploadingId !== null;
+  button('upload').disabled = !isActive(s) || s.battery <= 0 || s.uploadingId !== null || s.call !== null;
   text(button('upload'), t.status === 'uploading' ? '上傳已開始' : `上傳交件 +${t.reward}`);
   const confirming = pendingAbandonId === t.id;
   field('abandon-confirm').hidden = !confirming;
@@ -119,6 +122,7 @@ function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: numbe
   button('cancel-abandon').disabled = !isActive(s);
   let reason = '';
   if (s.paused) reason = '繼續遊戲後才能操作。';
+  else if (t.status === 'ready' && s.call) reason = '手機正在協調期限；完成或掛斷後才能上傳。';
   else if (s.battery <= 0 && ['pending', 'ready', 'uploading'].includes(t.status)) reason = '手機已關機，無法接案或交件；請充電。';
   else if (t.status === 'ready' && s.uploadingId !== null) reason = '手機正在上傳另一件，完成後才能交這件。';
   else if (['ready', 'uploading'].includes(t.status) && advice.needsCharge) reason = `上傳還需約 ${Math.ceil(advice.uploadBattery)}% 電量，建議邊充邊傳。`;
@@ -128,6 +132,23 @@ function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: numbe
   else if (t.status === 'ready') reason = '現在上傳才算交件，期限仍在倒數。';
   text(field('reason'), reason);
   field('reason').classList.toggle('urgent', !hidden && ['ready', 'uploading'].includes(t.status) && advice.needsCharge);
+  const learned = s.round === 2 && s.known.includes(t.id) && !!t.insight && !hidden;
+  field('terms').hidden = !learned;
+  if (learned) {
+    text(field('insight'), `上次客戶回覆：${insightText[t.insight!]}`);
+    const calling = s.call?.taskId === t.id;
+    text(field('terms-status'), calling ? `${s.battery <= 0 ? '通話暫停，請充電' : '通話協調中'} · 還需 ${(ENCORE.callSeconds - s.call!.progress).toFixed(1)} 秒；原期限仍倒數` : t.choice === 'brief' ? '已改交重點版 · 報酬降低，仍需上傳' : t.choice === 'extend' ? `已協調延期 ${ENCORE.extension} 秒 · 下班仍是最後期限` : t.insight === 'fixed' ? '這件須依原要求交件；把協商時間留給其他工作。' : ['ready', 'uploading'].includes(t.status) ? '處理已完成，請依目前條件交件。' : '可照原要求接收，或改變這件工作的條件。');
+    const eligible = !t.choice && ['pending', 'queued', 'processing'].includes(t.status);
+    button('brief').hidden = t.insight !== 'brief' || !eligible;
+    button('extend').hidden = t.insight !== 'extend' || !eligible;
+    button('brief').disabled = !isActive(s) || s.battery <= 0;
+    button('extend').disabled = !isActive(s) || s.battery <= 0 || !!s.call || s.uploadingId !== null;
+    text(button('brief'), `改交重點版 · ${Math.floor(t.reward * ENCORE.briefRewardRatio)} 分／處理 ${(t.work * ENCORE.briefWorkRatio).toFixed(1)} 秒`);
+    text(button('extend'), `打電話 ${ENCORE.callSeconds} 秒 · 延期 ${ENCORE.extension} 秒`);
+    button('cancel-call').hidden = !calling;
+    button('cancel-call').disabled = !isActive(s);
+    text(field('terms-reason'), s.battery <= 0 ? '手機關機，先補電。' : calling ? '通話耗電，電腦可同時工作；掛斷會失去本次通話進度。' : eligible && t.insight === 'extend' && s.uploadingId !== null ? '手機正在上傳，完成後才能撥電話。' : eligible && t.insight === 'extend' && s.call ? '正在與另一位客戶通話。' : eligible && t.insight === 'extend' ? '通話完成才延期；若先逾期則失敗。不增加報酬，也不延後下班。' : eligible && t.insight === 'brief' ? '直接減少內容與報酬，每件只能改一次。顯示的是正常效率處理時間。' : '');
+  }
 }
 
 let historySize = -1;
@@ -146,7 +167,7 @@ export function showDialog(kicker: string, title: string, copy: string, label: s
 export function hideDialog(): void { el('overlay').hidden = true; el('retry-same').hidden = true; el('play-area').inert = false; }
 const outcomes = { delivered: '已交件', expired: '逾期', abandoned: '主動放棄', unfinished: '下班未完成' };
 function historyLine(record: TaskRecord): string {
-  return `${clockText(record.at)} · ${record.name} · ${outcomes[record.outcome]} · ${record.score > 0 ? '+' : ''}${record.score} 分 · ${recordDetail(record)}`;
+  return `${clockText(record.at)} · ${record.name}${record.choice === 'brief' ? '（重點版）' : record.choice === 'extend' ? '（曾協調延期）' : ''} · ${outcomes[record.outcome]} · ${record.score > 0 ? '+' : ''}${record.score} 分 · ${recordDetail(record)}`;
 }
 export function resultReview(history: TaskRecord[]): string {
   const totals = reviewSummary(history);
@@ -166,7 +187,7 @@ export function resultReview(history: TaskRecord[]): string {
 }
 export function render(s: GameState, best: number, muted: boolean, pendingAbandonId: number | null = null): void {
   document.querySelector('.shell')!.classList.toggle('in-session', s.phase !== 'ready');
-  text(el('session-label'), s.paused ? '已暫停' : s.phase === 'playing' ? '下班倒數' : s.phase === 'ended' ? '下班了' : '準備上工');
+  text(el('session-label'), s.paused ? '已暫停' : s.phase === 'playing' ? `第 ${s.round || 1} 輪 · ${s.round === 2 ? '這次，談條件' : '先照要求做'}` : s.phase === 'ended' ? '下班了' : '準備上工');
   text(el('timer'), clockText(remaining(s)));
   el('timer').classList.toggle('urgent', remaining(s) <= 30);
   text(el('score'), String(s.score)); text(el('counts'), `已交 ${s.delivered} 件 · 漏件 ${s.missed} 件`);
@@ -190,6 +211,8 @@ export function render(s: GameState, best: number, muted: boolean, pendingAbando
   text(el('computer-status'), selected ? selected.status === 'ready' ? `電腦：${selected.name}・處理完成，尚未交件` : `電腦：${selected.name}・${selected.status === 'processing' ? '處理中' : '處理暫停'}・估計還需 ${processingSeconds(s, selected).toFixed(1)} 秒` : s.powered !== 'computer' ? '電腦：處理暫停・尚未選取工作' : '電腦：尚未選取工作，請接收或點擊工作卡');
   text(el('screen-progress'), selected ? `${Math.floor(selected.processed / selected.work * 100)}% ${selected.status === 'ready' ? '待上傳' : '處理'}` : '等待選取工作');
   text(el('phone-status'), s.battery === 0 ? '手機已關機，無法接案或交件' : upload ? `手機：上傳「${upload.name}」${Math.floor(upload.uploaded / upload.upload * 100)}%` : `手機：${s.tasks.filter(t => t.status === 'pending').length} 則待接收通知・熱點待命`);
+  if (s.call) text(el('phone-status'), `手機：${s.battery <= 0 ? '沒電，通話暫停' : '通話中'}「${s.tasks.find(t => t.id === s.call!.taskId)?.name}」· 還需 ${(ENCORE.callSeconds - s.call.progress).toFixed(1)} 秒，不能上傳`);
+  if (s.call && s.battery > 0) text(el('battery-note'), s.powered === 'phone' ? '邊充電邊通話' : '通話耗電中');
   text(el('heat-status'), s.powered === 'fan' ? `風扇降溫中，每秒 −${C.coolPerSecond}°C；手機可同時上傳。` : s.temperature >= C.heatWarning ? `高溫拖慢處理！可以先搶交快完成的工作，或降溫準備下一件。最低效率 ${Math.round(C.minEfficiency * 100)}%。` : selected?.status === 'processing' ? `電腦工作中，每秒升溫 ${C.workingHeatPerSecond}°C；待機時升溫較慢。` : `電腦待機中，每秒僅升溫 ${C.idleHeatPerSecond}°C，可利用空檔補電或降溫。`);
   el('heat-status').classList.toggle('urgent', s.temperature >= C.heatWarning);
   text(el('task-count'), `${s.tasks.length} / ${C.maxTasks}`);

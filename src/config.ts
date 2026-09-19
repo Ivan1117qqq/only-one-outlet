@@ -1,4 +1,9 @@
 /** 時間以秒計；電量以百分比計。處理量為正常效率下的秒數。 */
+export const ENCORE = {
+  duration: 100, callSeconds: 4, callDrain: 2, extension: 12,
+  briefWorkRatio: 0.45, briefRewardRatio: 0.65,
+  arrivals: [1, 19, 35, 46, 64, 76],
+} as const;
 export const CONFIG = {
   duration: 180,
   maxTasks: 3,
