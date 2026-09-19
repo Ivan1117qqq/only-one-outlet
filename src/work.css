@@ -195,3 +195,44 @@ footer { padding-top: 13px; }
 .memory-list { padding-left: 22px; text-align: left; font-size: .88rem; }
 .memory-list li { margin: 8px 0; line-height: 1.5; }
 .dialog { max-height: calc(100dvh - 40px); overflow-y: auto; }
+
+/* 把當下行動放在卡片前景，詳細估算與回顧保留於原節點內。 */
+.phone-hub { display: flex; gap: 10px; align-items: center; padding: 10px 16px; background: #eef2e8; border-top: 1px solid #cbd2bf; }
+.phone-hub > div { flex: 1; min-width: 0; }
+.phone-hub strong, .phone-hub small { display: block; line-height: 1.5; }
+.phone-hub strong { font-size: 13px; }
+.phone-hub small { font-size: 11px; }
+.phone-hub button { flex-shrink: 0; }
+.task-card .main-actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.main-actions button { white-space: normal; min-height: 42px; line-height: 1.5; }
+.choice-open .main-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.main-actions [data-action="brief"], .main-actions [data-action="extend"] { background: #eef2ff; color: #283652; border-color: #95a6d6; }
+.task-more { margin-top: 12px; font-size: 12px; line-height: 1.6; }
+.task-more summary { cursor: pointer; color: #52634b; }
+.task-more p { margin: 8px 0; }
+.task-card .terms { padding: 8px; margin: 8px 0 0; font-size: 12px; }
+.task-card .terms p { margin: 0; }
+.task-card .terms small:empty { display: none; }
+.task-card.due-soon { border-color: #cba372; }
+.task-card.due-soon [data-field="deadline"] { background: #fff0d4; color: #8b470d; border-radius: 6px; padding: 3px 6px; }
+.task-card.chosen { border-left: 5px solid #4d7050; }
+.round-brief h3 { font-size: 16px; margin: 14px 0 5px; }
+.round-brief p { margin: 6px 0 12px; }
+.memory-details summary { cursor: pointer; font-size: 13px; }
+.round-comparison table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; line-height: 1.6; }
+.round-comparison caption { text-align: left; font-weight: bold; margin-bottom: 8px; }
+.round-comparison th, .round-comparison td { padding: 8px 5px; border-bottom: 1px solid #d3d9ca; vertical-align: top; overflow-wrap: anywhere; }
+.round-comparison th { text-align: left; }
+.round-comparison thead { background: #eef2e8; }
+@media (max-width: 600px) {
+  .phone-hub { flex-wrap: wrap; padding: 8px 12px; gap: 6px; }
+  .phone-hub > div { flex-basis: 100%; }
+  .phone-hub button { padding: 5px 10px; }
+}
+@media (max-width: 700px) {
+  .task-card { display: block; }
+  .task-card .main-actions { margin-top: 10px; }
+  .task-card .action-reason { margin-top: 6px; }
+  .task-card .task-more { margin-top: 10px; }
+  .in-session .task-card { scroll-margin-top: 330px; }
+}

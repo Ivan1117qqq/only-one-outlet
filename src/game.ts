@@ -2,7 +2,7 @@ import { CONFIG as C } from './config.ts';
 import { createGenerator, generateTask } from './generator.ts';
 import type { GeneratorState } from './generator.ts';
 import { recordDetail } from './review.ts';
-import { ENCORE, appointments, insightText } from './encore.ts';
+import { ENCORE, appointments, briefTerms, insightText } from './encore.ts';
 import type { Appointment, Insight } from './encore.ts';
 
 export type Device = 'computer' | 'fan' | 'phone';
@@ -122,11 +122,13 @@ export function changeTerms(s: GameState, id: number, choice: 'brief' | 'extend'
   t.choice = choice;
   if (t.status === 'pending') receiveTask(s, id);
   if (choice === 'brief') {
-    t.work *= ENCORE.briefWorkRatio;
-    t.reward = Math.floor(t.reward * ENCORE.briefRewardRatio);
+    const before = { work: t.work, reward: t.reward };
+    const terms = briefTerms(t);
+    t.work = terms.work;
+    t.reward = terms.reward;
     t.processed = Math.min(t.processed, t.work);
     if (t.processed >= t.work) t.status = 'ready';
-    emit(s, `「${t.name}」改交重點版：報酬 ${t.reward} 分，仍需手機上傳。`, 'notice');
+    emit(s, `「${t.name}」重點版：正常處理 ${before.work} → ${t.work} 秒，報酬 ${before.reward} → ${t.reward} 分；仍需上傳。`, 'notice');
   } else {
     s.call = { taskId: id, progress: 0 };
     emit(s, `正在協調「${t.name}」：通話完成才延期，手機暫時不能上傳。`, 'notice');

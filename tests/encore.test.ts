@@ -22,12 +22,22 @@ test('重點版減少工量和報酬，需上傳才計分，不得重複改條�
   s.battery = 0; assert.equal(changeTerms(s, 1, 'brief'), false);
   setPower(s, 'phone'); tick(.1); setPower(s, 'computer');
   assert.equal(changeTerms(s, 1, 'brief'), true);
-  assert.equal(s.tasks[0].work, 3.6); assert.equal(s.tasks[0].reward, 52);
+  assert.equal(s.tasks[0].work, 5); assert.equal(s.tasks[0].reward, 55);
   assert.equal(changeTerms(s, 1, 'brief'), false);
-  tick(4); assert.equal(s.tasks[0].status, 'ready'); assert.equal(s.score, 0);
+  tick(5.5); assert.equal(s.tasks[0].status, 'ready'); assert.equal(s.score, 0);
   setPower(s, 'phone'); tick(1); assert.equal(startUpload(s, 1), true);
-  tick(3); assert.equal(s.score, 52); assert.equal(s.delivered, 1);
+  tick(3); assert.equal(s.score, 55); assert.equal(s.delivered, 1);
   assert.equal(startUpload(s, 1), false); assert.equal(s.history[0].choice, 'brief');
+});
+test('急件與簡報的重點版代價不同；已做工量保留且不返還時間', () => {
+  const { s, tick } = fixture(); tick(46); s.battery = 100;
+  const urgent = s.tasks.find(t => t.id === 4)!;
+  receiveTask(s, urgent.id); urgent.processed = 7;
+  const time = s.elapsed;
+  assert.equal(changeTerms(s, urgent.id, 'brief'), true);
+  assert.equal(urgent.work, 6); assert.equal(urgent.reward, 100);
+  assert.equal(urgent.processed, 6); assert.equal(urgent.status, 'ready');
+  assert.equal(s.elapsed, time); assert.equal(s.delivered, 0);
 });
 test('通話占手機但電腦繼續工作；暫停、沒電與充電續談，完成才延期', () => {
   const { s, tick } = fixture(); tick(35); s.battery = 20;

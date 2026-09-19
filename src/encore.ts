@@ -3,6 +3,9 @@ export { ENCORE } from './config.ts';
 import type { TaskTemplate } from './config.ts';
 
 export type Insight = 'brief' | 'extend' | 'fixed';
+export function briefTerms(task: { urgent: boolean }) {
+  return ENCORE.brief[task.urgent ? 'urgent' : 'normal'];
+}
 export interface Appointment { at: number; template: TaskTemplate; insight: Insight }
 /** 以最晚期限（含延期）安排，無論如何操作都不會有超過三件重疊。 */
 export function appointments(seed: number): Appointment[] {
