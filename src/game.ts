@@ -21,6 +21,7 @@ export interface TaskRecord {
 }
 export interface GameEvent { id: number; text: string; kind: 'notice' | 'success' | 'warning'; at: number }
 export interface GameState {
+  previous: TaskRecord[];
   round: 0 | 1 | 2; duration: number; schedule: Appointment[]; known: number[];
   call: { taskId: number; progress: number } | null;
   phase: 'ready' | 'playing' | 'ended'; paused: boolean; powered: Device;
@@ -30,8 +31,9 @@ export interface GameState {
   history: TaskRecord[]; events: GameEvent[]; eventSequence: number;
   generator: GeneratorState;
 }
-export function createGame(seed = Date.now(), round: 0 | 1 | 2 = 0, known: number[] = []): GameState {
+export function createGame(seed = Date.now(), round: 0 | 1 | 2 = 0, known: number[] = [], previous: TaskRecord[] = []): GameState {
   return {
+    previous: round === 2 ? previous.map(record => ({ ...record })) : [],
     round, duration: round ? ENCORE.duration : C.duration, schedule: round ? appointments(seed) : [], known: [...known], call: null,
     phase: 'ready', paused: false, powered: 'computer', elapsed: 0,
     temperature: C.initialTemperature, battery: C.initialBattery,
@@ -107,7 +109,9 @@ function finishTask(s: GameState, t: Task, outcome: Outcome): void {
   if (s.uploadingId === t.id) s.uploadingId = null;
   const label = { delivered: '已交件', expired: '已逾期', abandoned: '已放棄', unfinished: '下班未完成' }[outcome];
   const detail = outcome === 'delivered' ? '' : `・${recordDetail(s.history[s.history.length - 1])}`;
-  emit(s, `${t.name}・${label} ${score > 0 ? '+' : ''}${score} 分${detail}`, outcome === 'delivered' ? 'success' : 'warning');
+  const old = s.previous.find(record => record.id === t.id);
+  const rescued = outcome === 'delivered' && old && old.outcome !== 'delivered' ? '・救回上次漏掉的工作！' : '';
+  emit(s, `${t.name}・${label} ${score > 0 ? '+' : ''}${score} 分${detail}${rescued}`, outcome === 'delivered' ? 'success' : 'warning');
 }
 export function abandonTask(s: GameState, id: number): boolean {
   const t = s.tasks.find(t => t.id === id);

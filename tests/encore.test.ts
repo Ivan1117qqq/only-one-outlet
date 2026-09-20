@@ -2,11 +2,35 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, GameClock, receiveTask, changeTerms, startUpload, setPower, setPaused, cancelCall, abandonTask } from '../src/game.ts';
 import { appointments, ENCORE } from '../src/encore.ts';
+import { callAdvice } from '../src/task-advice.ts';
 
 function fixture(round: 1 | 2 = 2) {
   const s = createGame(42, round, [1, 2, 3, 4, 5, 6]); s.phase = 'playing';
   const clock = new GameClock(); return { s, tick: (dt: number) => clock.advance(s, dt) };
 }
+test('延期收益受下班限制，提醒通話造成的待上傳風險', () => {
+  const { s, tick } = fixture(); tick(35);
+  const target = s.tasks.find(t => t.id === 3)!;
+  const ready = s.tasks.find(t => t.id === 2)!;
+  ready.status = 'ready'; ready.dueAt = s.elapsed + 6;
+  assert.equal(callAdvice(s, target).gain, 12);
+  assert.equal(callAdvice(s, target).endangered, 1);
+  target.dueAt = 97; assert.equal(callAdvice(s, target).gain, 3);
+  target.dueAt = 110; assert.equal(callAdvice(s, target).gain, 0);
+  s.elapsed = 98; assert.equal(callAdvice(s, target).canFinish, false);
+});
+test('救回提示只在第二輪真正交件時發生一次，重開清除記憶', () => {
+  const first = fixture(1); first.tick(30);
+  const second = createGame(42, 2, [1], first.s.history); second.phase = 'playing';
+  const clock = new GameClock(); clock.advance(second, 1);
+  changeTerms(second, 1, 'brief'); clock.advance(second, 6);
+  assert.equal(second.events.some(e => e.text.includes('救回')), false);
+  startUpload(second, 1); clock.advance(second, 3.1);
+  assert.equal(second.events.filter(e => e.text.includes('救回')).length, 1);
+  startUpload(second, 1); clock.advance(second, 1);
+  assert.equal(second.events.filter(e => e.text.includes('救回')).length, 1);
+  assert.equal(createGame(42, 1).previous.length, 0);
+});
 test('第一輪不能談條件；結案解鎖，第二輪重新建立設備與進度', () => {
   const { s, tick } = fixture(1); s.known = []; tick(1);
   assert.equal(changeTerms(s, 1, 'brief'), false);

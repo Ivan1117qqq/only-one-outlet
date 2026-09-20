@@ -55,7 +55,7 @@ function pause(): void {
 }
 function begin(seed: number, round: 1 | 2 = 1): void {
   if (round === 1) firstRound = null;
-  state = createGame(seed, round, firstRound?.known); state.phase = 'playing';
+  state = createGame(seed, round, firstRound?.known, firstRound?.history); state.phase = 'playing';
   clock.reset(); resetView(); lastEvent = 0; resultShown = false; pendingAbandonId = null;
 }
 function resumeDisplay(): void {
@@ -110,6 +110,12 @@ el('tasks').addEventListener('click', event => {
   if (action === 'cancel-abandon') card.querySelector<HTMLButtonElement>('[data-action="abandon"]')!.focus();
 });
 el('phone-charge').addEventListener('click', () => act(() => setPower(state, 'phone')));
+el('phone-delivery').addEventListener('change', paint);
+el('phone-send').addEventListener('click', () => {
+  // 先保存玩家指定的 ID；時間更新令它逾期時，不改傳另一件。
+  const value = (el('phone-delivery') as HTMLSelectElement).value;
+  if (value) act(() => { startUpload(state, Number(value)); });
+});
 el('phone-hangup').addEventListener('click', () => act(() => cancelCall(state)));
 el('pause').addEventListener('click', pause);
 el('mute').addEventListener('click', () => {

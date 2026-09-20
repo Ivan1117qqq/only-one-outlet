@@ -236,3 +236,8 @@ footer { padding-top: 13px; }
   .task-card .task-more { margin-top: 10px; }
   .in-session .task-card { scroll-margin-top: 330px; }
 }
+.phone-hub { flex-wrap: wrap; }
+.phone-hub .delivery-controls { flex: 1 1 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.delivery-controls label, .delivery-controls small { grid-column: 1 / -1; font-size: 11px; }
+.delivery-controls select { width: 100%; min-width: 0; padding: 7px; border: 1px solid #aebda1; border-radius: 6px; background: #fffdf7; color: #283b30; }
+.previous-result { border-left: 3px solid #95a6d6; padding: 5px 8px; font-size: 12px; line-height: 1.5; color: #455570; }

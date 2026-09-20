@@ -2,7 +2,7 @@ import { CONFIG as C } from './config.ts';
 import { efficiency, isActive, processingSeconds, remaining } from './game.ts';
 import type { Device, GameState, Task, TaskRecord } from './game.ts';
 import { devicesMarkup } from './devices.ts';
-import { importance, taskAdvice } from './task-advice.ts';
+import { callAdvice, importance, taskAdvice } from './task-advice.ts';
 import { recordDetail, reviewSummary } from './review.ts';
 import { ENCORE, briefTerms, insightText } from './encore.ts';
 
@@ -28,7 +28,8 @@ export function mount(): void {
         <div class="room">${devicesMarkup}
           <div class="desk-line"></div><div class="outlet-row"><span class="outlet"><span>▮ ▮</span><i></i></span><div><small>唯一的插座</small><strong id="powered-label">已連接 → 電腦</strong></div><span class="switch-tip">點擊切換供電 <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span></div>
         </div>
-        <div class="phone-hub"><div><strong id="phone-status">手機待命</strong><small id="phone-queue"></small></div><button id="phone-charge" class="quiet">切到手機充電</button><button id="phone-hangup" class="quiet" hidden>掛斷，先交件</button></div>
+        <div class="phone-hub"><div><strong id="phone-status">手機待命</strong><small id="phone-queue"></small></div><button id="phone-charge" class="quiet">切到手機充電</button><button id="phone-hangup" class="quiet" hidden>掛斷，先交件</button>
+        <div id="delivery-controls" class="delivery-controls" hidden><label for="phone-delivery">選擇待交件工作</label><select id="phone-delivery"><option value="">請選擇工作，不會自動上傳</option></select><button id="phone-send" class="quiet" disabled>上傳所選工作</button><small id="phone-send-reason"></small></div></div>
         </div>
         <div class="operation-strip"><p id="computer-status">電腦：等待工作</p><p id="heat-status">溫度舒適，工作效率正常。</p></div>
         <section class="work-section" aria-labelledby="work-title"><div class="section-title"><h2 id="work-title">限時工作 <span id="task-count">0 / 3</span></h2><span id="arrival-hint">通知到達即開始倒數</span></div>
@@ -66,7 +67,8 @@ function makeCard(t: Task): HTMLElement {
     <div class="task-actions main-actions"><button data-action="receive">手機接收</button><button data-action="select">選取處理</button><button data-action="upload">上傳交件</button><button data-action="brief" hidden></button><button data-action="extend" hidden></button></div>
     <p class="action-reason" data-field="reason"></p>
     <section class="terms" data-field="terms" hidden><p data-field="terms-status"></p><small data-field="terms-reason"></small></section>
-    <details class="task-more"><summary>估算與上次紀錄</summary><p class="task-slack" data-field="slack" title="假設立即優先處理、維持目前效率且手機有電；包含上傳與通話排隊，不含補電、降溫、操作及其他電腦工作。"></p><p data-field="previous"></p><p data-field="insight"></p><button class="abandon" data-action="abandon">放棄此件（-${C.missedPenalty} 分）</button></details>
+    <p class="previous-result" data-field="previous" hidden></p>
+    <details class="task-more"><summary>估算與客戶回覆</summary><p class="task-slack" data-field="slack" title="假設立即優先處理、維持目前效率且手機有電；包含上傳與通話排隊，不含補電、降溫、操作及其他電腦工作。"></p><p data-field="insight"></p><button class="abandon" data-action="abandon">放棄此件（-${C.missedPenalty} 分）</button></details>
     <div class="abandon-confirm" data-field="abandon-confirm" hidden><p>確認放棄？扣 ${C.missedPenalty} 分並釋放位置。期限仍在倒數。</p><div><button data-action="cancel-abandon">保留工作</button><button data-action="confirm-abandon">確認放棄</button></div></div>`;
   return card;
 }
@@ -103,6 +105,7 @@ function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: numbe
     uploading: s.battery > 0 ? '上傳中・電腦可另做一件' : '上傳暫停・手機沒電，請充電',
   }[t.status];
   text(field('previous'), previous ? `上次：${recordDetail(previous)} · ${previous.score} 分` : '第一輪：先熟悉接收、處理與上傳。');
+  field('previous').hidden = !previous || hidden;
   text(field('status'), s.paused ? '遊戲暫停・所有進度保留' : status);
   field('work-fill').style.width = `${t.processed / t.work * 100}%`;
   text(field('progress'), hidden ? '復電後可查看工作內容' : `電腦 ${Math.floor(t.processed / t.work * 100)}% · 依目前效率還需 ${processingSeconds(s, t).toFixed(1)} 秒`);
@@ -155,12 +158,18 @@ function renderCard(card: HTMLElement, t: Task, s: GameState, earliestId?: numbe
     text(button('brief'), `重點版 · ${brief.reward} 分／${brief.work} 秒`);
     text(button('extend'), `打電話 ${ENCORE.callSeconds} 秒 · 延期 ${ENCORE.extension} 秒`);
     text(field('terms-reason'), s.battery <= 0 ? '手機關機，先補電。' : calling ? '通話耗電，電腦可同時工作；掛斷會失去本次通話進度。' : eligible && t.insight === 'extend' && s.uploadingId !== null ? '手機正在上傳，完成後才能撥電話。' : eligible && t.insight === 'extend' && s.call ? '正在與另一位客戶通話。' : eligible && t.insight === 'extend' ? '通話完成才延期；若先逾期則失敗。不增加報酬，也不延後下班。' : eligible && t.insight === 'brief' ? `少拿 ${t.reward - brief.reward} 分，減少 ${Math.max(0, t.work - Math.max(t.processed, brief.work)).toFixed(1)} 秒剩餘處理量（正常效率）；仍需上傳 ${t.upload} 秒。` : '');
+    if (eligible && t.insight === 'extend') {
+      const advice = callAdvice(s, t);
+      const reason = field('terms-reason').textContent;
+      text(field('terms-reason'), `${reason} 通話 ${ENCORE.callSeconds} 秒，截止時間實際延後 ${advice.gain.toFixed(1)} 秒（受下班限制）。${advice.canFinish ? '' : '剩餘時間不足以完成通話！'}${advice.waitingCount ? ` ${advice.waitingCount} 件／${advice.waitingScore} 分待上傳，通話期間須等待。${advice.endangered ? `其中 ${advice.endangered} 件若先通話再上傳，可能來不及。` : ''}` : ''}`);
+    }
   }
 }
 
 let historySize = -1;
 let feedbackKey = '';
 export function resetView(): void {
+  (el('phone-delivery') as HTMLSelectElement).replaceChildren(new Option('請選擇工作，不會自動上傳', ''));
   cardNodes.clear(); cardSlots.clear(); el('tasks').replaceChildren(); historySize = -1; feedbackKey = '';
   el('feedback').replaceChildren();
   (document.querySelector('.history') as HTMLDetailsElement).open = false;
@@ -268,6 +277,20 @@ export function render(s: GameState, best: number, muted: boolean, pendingAbando
   el('heat-status').classList.toggle('urgent', s.temperature >= C.heatWarning);
   text(el('task-count'), `${s.tasks.length} / ${C.maxTasks}`);
   const waiting = s.tasks.filter(t => t.status === 'ready');
+  const picker = el('phone-delivery') as HTMLSelectElement;
+  const pickedId = picker.value;
+  for (const option of [...picker.options]) if (option.value && !waiting.some(t => String(t.id) === option.value)) option.remove();
+  for (const task of waiting) {
+    let option = [...picker.options].find(option => option.value === String(task.id));
+    if (!option) { option = new Option('', String(task.id)); picker.add(option); }
+    text(option, `${task.name} · 剩 ${Math.ceil(Math.min(task.dueAt - s.elapsed, remaining(s)))} 秒 · ${task.reward} 分`);
+  }
+  if (pickedId && !waiting.some(t => String(t.id) === pickedId)) picker.value = '';
+  el('delivery-controls').hidden = waiting.length === 0;
+  picker.disabled = !isActive(s);
+  const sendReason = !isActive(s) ? '繼續遊戲後才能上傳' : s.battery <= 0 ? '手機已關機，先充電' : s.call ? '通話完成或掛斷後才能上傳' : s.uploadingId !== null ? '手機正在上傳另一件' : !picker.value ? '請先選擇要交的工作' : '按上傳才交件；不改變電腦選取的工作';
+  (el('phone-send') as HTMLButtonElement).disabled = !isActive(s) || s.battery <= 0 || !!s.call || s.uploadingId !== null || !picker.value;
+  text(el('phone-send-reason'), sendReason);
   text(el('phone-queue'), `待上傳 ${waiting.length} 件 · ${waiting.reduce((sum, t) => sum + t.reward, 0)} 分${s.call ? '｜通話中無法上傳' : upload ? '｜完成後才能接下一件上傳或通話' : '｜有電即可通訊，不必插電'}`);
   (el('phone-charge') as HTMLButtonElement).disabled = !isActive(s) || s.powered === 'phone';
   text(el('phone-charge'), s.powered === 'phone' ? '手機充電中' : '切到手機充電');
